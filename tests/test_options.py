@@ -29,14 +29,14 @@ def test_options(server: "Server") -> None:
     pane = window.split_window(attach=False)
 
     for obj in [server, session, window, pane]:
-        obj.show_options()
-        obj.show_options(_global=True)
-        obj.show_options(include_inherited=True)
-        obj.show_options(include_hooks=True)
+        obj._show_options()
+        obj._show_options(_global=True)
+        obj._show_options(include_inherited=True)
+        obj._show_options(include_hooks=True)
         with pytest.raises(OptionError):
-            obj.show_option("test")
+            obj._show_option("test")
         if has_gte_version("3.0"):
-            obj.show_option("test", ignore_errors=True)
+            obj._show_option("test", ignore_errors=True)
         with pytest.raises(OptionError):
             obj.set_option("test", "invalid")
         if isinstance(obj, Pane):
@@ -56,7 +56,7 @@ def test_options_server(server: "Server") -> None:
     pane = window.split_window(attach=False)
 
     server.set_option("buffer-limit", 100)
-    assert server.show_option("buffer-limit") == 100
+    assert server._show_option("buffer-limit") == 100
     if has_gte_version("3.0"):
         server.set_option("buffer-limit", 150, scope=OptionScope.Pane)
 
@@ -68,7 +68,7 @@ def test_options_server(server: "Server") -> None:
     server.set_option("buffer-limit", 150, scope=OptionScope.Server)
 
     if has_gte_version("3.0"):
-        assert session.show_option("buffer-limit") == 150
+        assert session._show_option("buffer-limit") == 150
 
     # Server option in deeper objects
     if has_gte_version("3.0"):
@@ -78,23 +78,23 @@ def test_options_server(server: "Server") -> None:
             pane.set_option("buffer-limit", 100)
 
     if has_gte_version("3.0"):
-        assert pane.show_option("buffer-limit") == 100
-        assert window.show_option("buffer-limit") == 100
-        assert server.show_option("buffer-limit") == 100
+        assert pane._show_option("buffer-limit") == 100
+        assert window._show_option("buffer-limit") == 100
+        assert server._show_option("buffer-limit") == 100
 
-    server_options = ServerOptions(**server.show_options(scope=OptionScope.Server))
+    server_options = ServerOptions(**server._show_options(scope=OptionScope.Server))
     if has_gte_version("3.0"):
-        assert server.show_option("buffer-limit") == 100
+        assert server._show_option("buffer-limit") == 100
 
         assert server_options.buffer_limit == 100
 
         server.set_option("buffer-limit", 150, scope=OptionScope.Server)
 
-        assert server.show_option("buffer-limit") == 150
+        assert server._show_option("buffer-limit") == 150
 
         server.unset_option("buffer-limit")
 
-        assert server.show_option("buffer-limit") == 50
+        assert server._show_option("buffer-limit") == 50
 
 
 def test_options_session(server: "Server") -> None:
@@ -102,7 +102,7 @@ def test_options_session(server: "Server") -> None:
     session = server.new_session(session_name="test")
     session.new_window(window_name="test")
 
-    _session_options = session.show_options(scope=OptionScope.Session)
+    _session_options = session._show_options(scope=OptionScope.Session)
 
     session_options = SessionOptions(**_session_options)
     assert session_options.default_size == _session_options.get("default-size")
@@ -114,7 +114,7 @@ def test_options_window(server: "Server") -> None:
     window = session.new_window(window_name="test")
     window.split_window(attach=False)
 
-    _window_options = window.show_options(scope=OptionScope.Window)
+    _window_options = window._show_options(scope=OptionScope.Window)
 
     window_options = WindowOptions(**_window_options)
     assert window_options.automatic_rename == _window_options.get("automatic-rename")
@@ -126,7 +126,7 @@ def test_options_pane(server: "Server") -> None:
     window = session.new_window(window_name="test")
     pane = window.split_window(attach=False)
 
-    _pane_options = pane.show_options(scope=OptionScope.Pane)
+    _pane_options = pane._show_options(scope=OptionScope.Pane)
 
     pane_options = PaneOptions(**_pane_options)
     assert pane_options.window_active_style == _pane_options.get("window-active-style")
@@ -146,7 +146,7 @@ def test_options_grid(server: "Server") -> None:
                     OptionScope.Session,
                     OptionScope.Window,
                 ]:
-                    _obj_global_options = obj.show_options(
+                    _obj_global_options = obj._show_options(
                         scope=scope,
                         include_inherited=include_inherited,
                         _global=_global,
@@ -187,7 +187,7 @@ def test_custom_options(
     """Test tmux's user (custom) options."""
     session = server.new_session(session_name="test")
     session.set_option("@custom-option", "test")
-    assert session.show_option("@custom-option") == "test"
+    assert session._show_option("@custom-option") == "test"
 
 
 MOCKED_GLOBAL_OPTIONS: t.List[str] = """
@@ -259,7 +259,7 @@ def test_terminal_features(
 ) -> None:
     """Test tmux's terminal-feature option destructuring."""
     monkeypatch.setattr(server, "cmd", fake_cmd(stdout=MOCKED_GLOBAL_OPTIONS))
-    _options = server.show_options()
+    _options = server._show_options()
     assert any("terminal-features" in k for k in _options)
     options = Options(**_options)
     assert options
@@ -280,7 +280,7 @@ def test_terminal_overrides(
 ) -> None:
     """Test tmux's terminal-overrides option destructuring."""
     monkeypatch.setattr(server, "cmd", cmd_mocked)
-    _options = server.show_options()
+    _options = server._show_options()
     assert any("terminal-overrides" in k for k in _options)
     options = Options(**_options)
     assert options
@@ -295,7 +295,7 @@ def test_command_alias(
 ) -> None:
     """Test tmux's command-alias option destructuring."""
     monkeypatch.setattr(server, "cmd", cmd_mocked)
-    _options = server.show_options()
+    _options = server._show_options()
     assert any("command-alias" in k for k in _options)
     options = Options(**_options)
     assert options
@@ -310,7 +310,7 @@ def test_user_keys(
 ) -> None:
     """Test tmux's user-keys option destructuring."""
     monkeypatch.setattr(server, "cmd", cmd_mocked)
-    _options = server.show_options()
+    _options = server._show_options()
     assert any("user-keys" in k for k in _options)
     options = Options(**_options)
     assert options

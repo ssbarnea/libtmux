@@ -227,7 +227,7 @@ class OptionMixin(CmdMixin):
         return self
 
     @t.overload
-    def show_options(
+    def _show_options(
         self,
         g: t.Optional[bool],
         _global: t.Optional[bool],
@@ -240,7 +240,7 @@ class OptionMixin(CmdMixin):
         ...
 
     @t.overload
-    def show_options(
+    def _show_options(
         self,
         g: t.Optional[bool],
         _global: t.Optional[bool],
@@ -253,7 +253,7 @@ class OptionMixin(CmdMixin):
         ...
 
     @t.overload
-    def show_options(
+    def _show_options(
         self,
         g: t.Optional[bool] = None,
         _global: t.Optional[bool] = None,
@@ -267,7 +267,7 @@ class OptionMixin(CmdMixin):
     ) -> "OptionDict":
         ...
 
-    def show_options(
+    def _show_options(
         self,
         g: t.Optional[bool] = False,
         _global: t.Optional[bool] = False,
@@ -354,7 +354,7 @@ class OptionMixin(CmdMixin):
 
         return options
 
-    def show_option(
+    def _show_option(
         self,
         option: str,
         _global: bool = False,
