@@ -1,13 +1,34 @@
-import re
+"""Internal constants."""
+import io
+import logging
 import typing as t
 from dataclasses import dataclass, field
 
 from libtmux._internal.dataclasses import SkipDefaultFieldsReprMixin
 
-TerminalFeatures = t.Dict[str, t.List[str]]
+if t.TYPE_CHECKING:
+    from typing_extensions import TypeAlias, TypeGuard
 
+    from libtmux.options import ExplodedComplexUntypedOptionsDict
 
 T = t.TypeVar("T")
+
+TerminalFeatures = t.Dict[str, t.List[str]]
+HookArray: "TypeAlias" = "t.Dict[str, TmuxArray[str]]"
+
+logger = logging.getLogger(__name__)
+
+
+def is_tmux_array_list(
+    items: "ExplodedComplexUntypedOptionsDict",
+) -> "TypeGuard[HookArray]":
+    return all(
+        isinstance(
+            v,
+            TmuxArray,
+        )
+        for k, v in items.items()
+    )
 
 
 class TmuxArray(t.Dict[int, T], t.Generic[T]):
@@ -119,7 +140,7 @@ class SessionOptions(
     status_right_length: t.Optional[int] = field(default=None)
     status_right_style: t.Optional[str] = field(default=None)
     status_style: t.Optional[str] = field(default=None)
-    update_environment: t.Optional[t.List[str]] = field(default=None)
+    update_environment: TmuxArray[str] = field(default_factory=TmuxArray)
     visual_activity: t.Optional[t.Literal["on", "off", "both"]] = field(default=None)
     visual_bell: t.Optional[t.Literal["on", "off", "both"]] = field(default=None)
     visual_silence: t.Optional[t.Literal["on", "off", "both"]] = field(default=None)
@@ -348,6 +369,10 @@ class Hooks(
     window_add: TmuxArray[str] = field(default_factory=TmuxArray)
     # The window with ID window-id closed.
     window_close: TmuxArray[str] = field(default_factory=TmuxArray)
+    # The layout of a window with ID window-id changed. The new layout is window-layout.
+    # The window's visible layout is window-visible-layout and the window flags are
+    # window-flags.
+    window_layout_changed: TmuxArray[str] = field(default_factory=TmuxArray)
     # The active pane in the window with ID window-id changed to the pane with ID
     # pane-id.
     window_pane_changed: TmuxArray[str] = field(default_factory=TmuxArray)
@@ -429,32 +454,30 @@ class Hooks(
     after_show_options: TmuxArray[str] = field(default_factory=TmuxArray)
     # Runs after 'split-window' completes
     after_split_window: TmuxArray[str] = field(default_factory=TmuxArray)
+    # Runs after 'unbind-key' completes
+    after_unbind_key: TmuxArray[str] = field(default_factory=TmuxArray)
 
     @classmethod
     def from_stdout(cls, value: t.List[str]) -> "Hooks":
-        output: t.Dict[str, TmuxArray[str]] = {}
-        for line in value:
-            if not line or " " not in line:
-                continue
-            full_hook, cmd = line.split(" ", maxsplit=1)
+        from libtmux.options import (
+            explode_arrays,
+            explode_complex,
+            parse_options_to_dict,
+        )
 
-            matchgroup = re.match(
-                r"(?P<hook>[\w-]+)(\[(?P<index>\d+)\])?",
-                full_hook,
+        output_exploded = explode_complex(
+            explode_arrays(
+                parse_options_to_dict(
+                    io.StringIO("\n".join(value)),
+                ),
+                force_array=True,
             )
-            assert matchgroup is not None
+        )
 
-            match = matchgroup.groupdict()
-            hook = str(match["hook"]).lstrip("%").replace("-", "_")  # Remove %
-            index = int(match["index"])
-            if hook not in output:
-                output[hook] = TmuxArray()
-            if index is not None:
-                index = int(index)
-                assert isinstance(index, int)
-                assert isinstance(output[hook], TmuxArray)
-                output[hook][index] = cmd
-            else:
-                output[hook].append(cmd)
+        assert is_tmux_array_list(output_exploded)
 
-        return cls(**output)
+        output_renamed: "HookArray" = {
+            k.lstrip("%").replace("-", "_"): v for k, v in output_exploded.items()
+        }
+
+        return cls(**output_renamed)
