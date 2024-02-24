@@ -254,8 +254,11 @@ def test_hooks_dataclass(
     window_out = server.cmd("show-hooks", "-w").stdout
     pane_out = server.cmd("show-hooks", "-p").stdout
 
+    session_out_processed = Hooks.from_stdout(session_out)
+    assert session_out_processed.session_renamed is not None
+
     assert (
-        Hooks.from_stdout(session_out).session_renamed[2]
+        session_out_processed.session_renamed[2]
         == "set-option -g status-left-style bg=blue"
     )
 
