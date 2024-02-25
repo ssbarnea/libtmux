@@ -17,7 +17,6 @@ from libtmux.constants import OptionScope
 from libtmux.exc import OptionError
 from libtmux.pane import Pane
 from libtmux.server import Server
-from libtmux.session import Session
 
 if t.TYPE_CHECKING:
     pass
