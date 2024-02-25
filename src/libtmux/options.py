@@ -157,7 +157,7 @@ def handle_option_error(error: str) -> t.Type[exc.OptionError]:
 
 
 _V = t.TypeVar("_V")
-ConvertedValue: "TypeAlias" = t.Union[str, int, float, bool, None]
+ConvertedValue: "TypeAlias" = t.Union[str, int, bool, None]
 ConvertedValues: "TypeAlias" = t.Union[
     ConvertedValue,
     t.List[ConvertedValue],
@@ -203,7 +203,6 @@ def convert_value(
 
 def convert_values(
     value: t.Optional[_V],
-    # ) -> t.Union[str, int, float, bool, t.Dict[str, t.Any], _V]:
 ) -> t.Optional[t.Union["ConvertedValues", _V]]:
     """Recursively convert values to python types via :func:`convert_value`."""
     if value is None:
@@ -278,7 +277,7 @@ def parse_options_to_dict(
     """
     output: "UntypedOptionsDict" = {}
 
-    val: t.Optional[t.Union[bool, str, float]] = None
+    val: t.Optional[ConvertedValue] = None
 
     for item in stdout.readlines():
         if " " in item:
@@ -723,7 +722,7 @@ class OptionMixin(CmdMixin):
         ignore_errors: t.Optional[bool] = None,
         include_hooks: t.Optional[bool] = None,
         include_inherited: t.Optional[bool] = None,
-    ) -> t.Optional[t.Union[str, int]]:
+    ) -> t.Optional[ConvertedValue]:
         """Return option value for the target.
 
         todo: test and return True/False for on/off string
@@ -775,10 +774,23 @@ class OptionMixin(CmdMixin):
         if not len(options_output):
             return None
 
-        value_raw = next(shlex.split(item) for item in options_output)
-
-        value: t.Union[str, int] = (
-            int(value_raw[1]) if value_raw[1].isdigit() else value_raw[1]
+        output_exploded = t.cast(
+            "t.Optional[ConvertedValue]",
+            convert_values(
+                explode_complex(
+                    explode_arrays(
+                        parse_options_to_dict(
+                            io.StringIO("\n".join(cmd.stdout)),
+                        ),
+                    )
+                )
+            ),
         )
 
-        return value
+        if not isinstance(output_exploded, dict):
+            return output_exploded
+
+        if option not in output_exploded:
+            return None
+
+        return t.cast("t.Optional[ConvertedValue]", output_exploded[option])
