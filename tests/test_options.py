@@ -1,5 +1,6 @@
 """Test for libtmux options management."""
 import dataclasses
+import textwrap
 import typing as t
 
 import pytest
@@ -319,3 +320,64 @@ def test_user_keys(
     options = Options(**_options)
     assert options
     assert options.user_keys is None
+
+
+class OptionTextFixture(t.NamedTuple):
+    """Test fixture raw show_option(s) data into typed libtmux data."""
+
+    # pytest internal
+    test_id: str
+
+    # test data
+    option_data: t.List[str]  # option data (raw)
+    tmux_option: str  # e.g. terminal-features
+
+    # results
+    expected: t.Any  # e.g. 50, TerminalFeatures({}), etc.
+    dataclass_attribute: str  # e.g. terminal_features
+
+
+TEST_FIXTURES: t.List[OptionTextFixture] = [
+    OptionTextFixture(
+        test_id="terminal-features",
+        option_data=textwrap.dedent(
+            """
+            terminal-features[0] xterm*:clipboard:ccolour:cstyle:focus
+            terminal-features[1] screen*:title
+            """
+        )
+        .strip()
+        .split("\n"),
+        dataclass_attribute="terminal_features",
+        tmux_option="terminal-features",
+        expected={
+            "screen*": ["title"],
+            "xterm*": ["clipboard", "ccolour", "cstyle", "focus"],
+        },
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    list(OptionTextFixture._fields),
+    TEST_FIXTURES,
+    ids=[test.test_id for test in TEST_FIXTURES],
+)
+def test_option_text_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+    test_id: str,
+    option_data: t.List[str],
+    tmux_option: str,
+    expected: t.Any,
+    dataclass_attribute: str,
+    server: "Server",
+) -> None:
+    """Parametrized test grid for options."""
+    monkeypatch.setattr(server, "cmd", fake_cmd(stdout=option_data))
+
+    _options = server._show_options()
+    assert any(tmux_option in k for k in _options)
+    options = Options(**_options)
+    assert options
+    assert hasattr(options, dataclass_attribute)
+    assert getattr(options, dataclass_attribute, None) == expected
