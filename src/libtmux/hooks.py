@@ -222,38 +222,6 @@ class HookMixin(CmdMixin):
 
         return self
 
-    @t.overload
-    def show_hooks(
-        self,
-        _global: t.Optional[bool],
-        scope: t.Optional[t.Union[OptionScope, _DefaultOptionScope]],
-        ignore_errors: t.Optional[bool],
-        values_only: t.Literal[True],
-    ) -> t.List[str]:
-        ...
-
-    @t.overload
-    def show_hooks(
-        self,
-        _global: t.Optional[bool],
-        scope: t.Optional[t.Union[OptionScope, _DefaultOptionScope]],
-        ignore_errors: t.Optional[bool],
-        values_only: t.Literal[None] = None,
-    ) -> "HookDict":
-        ...
-
-    @t.overload
-    def show_hooks(
-        self,
-        _global: t.Optional[bool] = None,
-        scope: t.Optional[
-            t.Union[OptionScope, _DefaultOptionScope]
-        ] = DEFAULT_OPTION_SCOPE,
-        ignore_errors: t.Optional[bool] = None,
-        values_only: t.Literal[False] = False,
-    ) -> "HookDict":
-        ...
-
     def show_hooks(
         self,
         _global: t.Optional[bool] = False,
@@ -261,8 +229,7 @@ class HookMixin(CmdMixin):
             t.Union[OptionScope, _DefaultOptionScope]
         ] = DEFAULT_OPTION_SCOPE,
         ignore_errors: t.Optional[bool] = None,
-        values_only: t.Optional[bool] = False,
-    ) -> t.Union["HookDict", t.List[str]]:
+    ) -> "HookDict":
         """Return a dict of hooks for the target."""
         if scope is DEFAULT_OPTION_SCOPE:
             scope = self.default_hook_scope
@@ -283,9 +250,6 @@ class HookMixin(CmdMixin):
                 )
             else:
                 flags += (flag,)
-
-        if values_only is not None and values_only:
-            flags += ("-v",)
 
         if ignore_errors is not None and ignore_errors:
             assert isinstance(ignore_errors, bool)
