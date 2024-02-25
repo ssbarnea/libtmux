@@ -19,9 +19,6 @@ from libtmux.exc import OptionError
 from libtmux.pane import Pane
 from libtmux.server import Server
 
-if t.TYPE_CHECKING:
-    pass
-
 
 def test_options(server: "Server") -> None:
     """Test basic options."""
